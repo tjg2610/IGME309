@@ -61,7 +61,23 @@ void MyMesh::GenerateCone(float a_fRadius, float a_fHeight, int a_nSubdivisions,
 	Init();
 
 	// Replace this with your code
-	GenerateCube(a_fRadius * 2.0f, a_v3Color);
+	
+	// 2 circles with opposite normals
+	// Top circle has center at (0, 0, height) instead of (0, 0, 0)
+	float triRadians = (2 * PI) / a_nSubdivisions;
+	float currentTriRad = 0;
+
+	for (int i = 0; i < a_nSubdivisions; i++) {
+		vector3 pointOne = vector3(cos(currentTriRad) * a_fRadius, sin(currentTriRad) * a_fRadius, 0.0f);
+		currentTriRad += triRadians;
+		vector3 pointTwo = vector3(cos(currentTriRad) * a_fRadius, sin(currentTriRad) * a_fRadius, 0.0f);
+
+		// Top part of cone
+		AddTri(vector3(0.0f, 0.0f, a_fHeight), pointOne, pointTwo);
+		// Underside of cone
+		AddTri(vector3(0.0f, 0.0f, 0.0f), pointTwo, pointOne);
+	}
+
 	// -------------------------------
 
 	// Adding information about color
@@ -85,7 +101,29 @@ void MyMesh::GenerateCylinder(float a_fRadius, float a_fHeight, int a_nSubdivisi
 	Init();
 
 	// Replace this with your code
-	GenerateCube(a_fRadius * 2.0f, a_v3Color);
+	
+	// 2 completely separate circles with opposing normals
+	// Squares should join the two sides
+	float triRadians = (2 * PI) / a_nSubdivisions;
+	float currentTriRad = 0;
+
+	for (int i = 0; i < a_nSubdivisions; i++) {
+		// One > Two > Three > Four
+		// A > B > C > D
+		vector3 pointOne = vector3(cos(currentTriRad) * a_fRadius, sin(currentTriRad) * a_fRadius, 0.0f);
+		currentTriRad += triRadians;
+		vector3 pointTwo = vector3(cos(currentTriRad) * a_fRadius, sin(currentTriRad) * a_fRadius, 0.0f);
+		vector3 pointThree = pointOne + vector3(0.0f, 0.0f, a_fHeight);
+		vector3 pointFour = pointTwo + vector3(0.0f, 0.0f, a_fHeight);
+
+		// Ceiling of cylinder
+		AddTri(vector3(0.0f, 0.0f, a_fHeight), pointThree, pointFour);
+		// Floor of cylinder
+		AddTri(vector3(0.0f, 0.0f, 0.0f), pointTwo, pointOne);
+		// Wall of cylinder
+		AddQuad(pointOne, pointTwo, pointThree, pointFour);
+	}
+
 	// -------------------------------
 
 	// Adding information about color
@@ -115,7 +153,40 @@ void MyMesh::GenerateTube(float a_fOuterRadius, float a_fInnerRadius, float a_fH
 	Init();
 
 	// Replace this with your code
-	GenerateCube(a_fOuterRadius * 2.0f, a_v3Color);
+	
+	// Cylinder - thinner cylinder
+	// Ceiling and floor will need squares to fill in
+	// Inner wall with flipped normals will also be needed
+	float triRadians = (2 * PI) / a_nSubdivisions;
+	float currentTriRad = 0;
+
+	for (int i = 0; i < a_nSubdivisions; i++) {
+		// Two circles to keep track of
+		// Outer: 1, 2, 3, 4
+		// Inner: 5, 6, 7, 8
+		vector3 pointOne = vector3(cos(currentTriRad) * a_fOuterRadius, sin(currentTriRad) * a_fOuterRadius, 0.0f);
+		// Have to do this now since currentTriRad will increment soon, even though it's numerically out of order
+		vector3 pointFive = vector3(cos(currentTriRad) * a_fInnerRadius, sin(currentTriRad) * a_fInnerRadius, 0.0f);
+		currentTriRad += triRadians;
+		vector3 pointTwo = vector3(cos(currentTriRad) * a_fOuterRadius, sin(currentTriRad) * a_fOuterRadius, 0.0f);
+		vector3 pointSix = vector3(cos(currentTriRad) * a_fInnerRadius, sin(currentTriRad) * a_fInnerRadius, 0.0f);
+		// Outer upper circle
+		vector3 pointThree = pointOne + vector3(0.0f, 0.0f, a_fHeight);
+		vector3 pointFour = pointTwo + vector3(0.0f, 0.0f, a_fHeight);
+		// Inner upper circle
+		vector3 pointSeven = pointFive + vector3(0.0f, 0.0f, a_fHeight);
+		vector3 pointEight = pointSix + vector3(0.0f, 0.0f, a_fHeight);
+
+		// Tube's outer wall
+		AddQuad(pointOne, pointTwo, pointThree, pointFour);
+		// Tube's inner wall
+		AddQuad(pointFive, pointSeven, pointSix, pointEight);	// Need to flip the normals, 6 and 7 need to be in reverse order
+		// Tube's ceiling
+		AddQuad(pointThree, pointFour, pointSeven, pointEight);
+		// Tube's floor
+		AddQuad(pointOne, pointFive, pointTwo, pointSix);
+	}
+
 	// -------------------------------
 
 	// Adding information about color
@@ -147,7 +218,8 @@ void MyMesh::GenerateTorus(float a_fOuterRadius, float a_fInnerRadius, int a_nSu
 	Init();
 
 	// Replace this with your code
-	GenerateCube(a_fOuterRadius * 2.0f, a_v3Color);
+	
+	// Outer Radius - Inner Radius = Radius of torus
 	// -------------------------------
 
 	// Adding information about color
@@ -172,7 +244,22 @@ void MyMesh::GenerateSphere(float a_fRadius, int a_nSubdivisions, vector3 a_v3Co
 	Init();
 
 	// Replace this with your code
-	GenerateCube(a_fRadius * 2.0f, a_v3Color);
+	
+	// Top and bottom should be circles
+	// Everything inbetween should be square walls
+	float triRadians = (2 * PI) / a_nSubdivisions;
+	float currentTriRad = 0;
+
+	for (int i = 0; i < a_nSubdivisions; i++) {
+		vector3 pointOne = vector3(cos(currentTriRad) * a_fRadius, sin(currentTriRad) * a_fRadius, 0.0f);
+		currentTriRad += triRadians;
+		vector3 pointTwo = vector3(cos(currentTriRad) * a_fRadius, sin(currentTriRad) * a_fRadius, 0.0f);
+
+		// Ceiling of cylinder
+		AddTri(vector3(0.0f, 0.0f, a_fRadius), pointOne, pointTwo);
+		// Floor of cylinder
+		AddTri(vector3(0.0f, 0.0f, 0.0f), pointTwo, pointOne);
+	}
 	// -------------------------------
 
 	// Adding information about color
