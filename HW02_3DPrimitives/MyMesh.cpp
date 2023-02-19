@@ -220,6 +220,39 @@ void MyMesh::GenerateTorus(float a_fOuterRadius, float a_fInnerRadius, int a_nSu
 	// Replace this with your code
 	
 	// Outer Radius - Inner Radius = Radius of torus
+	// Probably only quads as the whole thing is walls
+	// Circle formula still relevant
+	float offsetTriRadians = (2 * PI) / a_nSubdivisionsB;
+	float offsetCurrentRads = 0;
+
+	for (int i = 0; i < a_nSubdivisionsB; i++) {
+		// Calculate offset for this ring
+		matrix4 coordTransform = IDENTITY_M4;
+		coordTransform = glm::rotate(coordTransform, offsetCurrentRads, vector3(0.0f, 1.0f, 0.0f));
+		coordTransform = glm::translate(coordTransform, vector3(a_fInnerRadius + ((a_fOuterRadius - a_fInnerRadius) / 2), 0.0f, 0.0f));
+		matrix4 futureTransform = IDENTITY_M4;
+		futureTransform = glm::rotate(futureTransform, offsetCurrentRads + offsetTriRadians, vector3(0.0f, 1.0f, 0.0f));
+		futureTransform = glm::translate(futureTransform, vector3(a_fInnerRadius + ((a_fOuterRadius - a_fInnerRadius) / 2), 0.0f, 0.0f));
+
+		float triRadians = (2 * PI) / a_nSubdivisionsA;
+		float currentTriRad = 0;
+
+		for (int j = 0; j < a_nSubdivisionsA; j++) {
+			vector3 pointOne = vector3(cos(currentTriRad) * (a_fOuterRadius - a_fInnerRadius), sin(currentTriRad) * (a_fOuterRadius - a_fInnerRadius), 0.0f);
+			vector3 pointThree = vector3(cos(currentTriRad) * (a_fOuterRadius - a_fInnerRadius), sin(currentTriRad) * (a_fOuterRadius - a_fInnerRadius), 0.0f);
+			currentTriRad += triRadians;
+			vector3 pointTwo = vector3(cos(currentTriRad) * (a_fOuterRadius - a_fInnerRadius), sin(currentTriRad) * (a_fOuterRadius - a_fInnerRadius), 0.0f);
+			vector3 pointFour = vector3(cos(currentTriRad) * (a_fOuterRadius - a_fInnerRadius), sin(currentTriRad) * (a_fOuterRadius - a_fInnerRadius), 0.0f);
+
+			// Translate the four points
+			pointOne = coordTransform * vector4(pointOne, 1.0f);
+			pointTwo = coordTransform * vector4(pointTwo, 1.0f);
+			pointThree = futureTransform * vector4(pointThree, 1.0f);
+			pointFour = futureTransform * vector4(pointFour, 1.0f);
+			AddQuad(pointOne, pointThree, pointTwo, pointFour);
+		}
+		offsetCurrentRads += offsetTriRadians;
+	}
 	// -------------------------------
 
 	// Adding information about color
@@ -249,16 +282,40 @@ void MyMesh::GenerateSphere(float a_fRadius, int a_nSubdivisions, vector3 a_v3Co
 	// Everything inbetween should be square walls
 	float triRadians = (2 * PI) / a_nSubdivisions;
 	float currentTriRad = 0;
+	float subDivHeight = a_fRadius / a_nSubdivisions;
 
 	for (int i = 0; i < a_nSubdivisions; i++) {
-		vector3 pointOne = vector3(cos(currentTriRad) * a_fRadius, sin(currentTriRad) * a_fRadius, 0.0f);
+		float currentSphereRad = triRadians / 2;
+		vector3 pointOne = vector3(sin(currentSphereRad) * cos(currentTriRad) * a_fRadius, sin(currentSphereRad) * sin(currentTriRad) * a_fRadius,
+			cos(currentSphereRad) * a_fRadius);
 		currentTriRad += triRadians;
-		vector3 pointTwo = vector3(cos(currentTriRad) * a_fRadius, sin(currentTriRad) * a_fRadius, 0.0f);
+		vector3 pointTwo = vector3(sin(currentSphereRad) * cos(currentTriRad) * a_fRadius, sin(currentSphereRad) * sin(currentTriRad) * a_fRadius,
+			cos(currentSphereRad) * a_fRadius);
 
-		// Ceiling of cylinder
+		for (int j = 1; j < a_nSubdivisions - 1; j++) {
+			vector3 sqPointOne = vector3(sin(currentSphereRad) * cos(currentTriRad - triRadians) * a_fRadius, sin(currentSphereRad) * sin(currentTriRad - triRadians) * a_fRadius,
+				cos(currentSphereRad) * a_fRadius);
+			vector3 sqPointTwo = vector3(sin(currentSphereRad) * cos(currentTriRad) * a_fRadius, sin(currentSphereRad) * sin(currentTriRad) * a_fRadius,
+				cos(currentSphereRad) * a_fRadius);
+			vector3 sqPointThree = vector3(sin(currentSphereRad + (triRadians / 2)) * cos(currentTriRad - triRadians) * a_fRadius,
+				sin(currentSphereRad + (triRadians / 2)) * sin(currentTriRad - triRadians) * a_fRadius,
+				cos(currentSphereRad + (triRadians / 2)) * a_fRadius);
+			vector3 sqPointFour = vector3(sin(currentSphereRad + (triRadians / 2)) * cos(currentTriRad) * a_fRadius,
+				sin(currentSphereRad + (triRadians / 2)) * sin(currentTriRad) * a_fRadius,
+				cos(currentSphereRad + (triRadians / 2)) * a_fRadius);
+
+			AddQuad(sqPointOne, sqPointThree, sqPointTwo, sqPointFour);
+
+			currentSphereRad += triRadians / 2;
+		}
+
+		// Top of sphere
 		AddTri(vector3(0.0f, 0.0f, a_fRadius), pointOne, pointTwo);
-		// Floor of cylinder
-		AddTri(vector3(0.0f, 0.0f, 0.0f), pointTwo, pointOne);
+		// Move points one and two to the top of the sphere
+		pointOne = vector3(pointOne.x, pointOne.y, cos(currentSphereRad) * a_fRadius);
+		pointTwo = vector3(pointTwo.x, pointTwo.y, cos(currentSphereRad) * a_fRadius);
+		// Bottom of sphere
+		AddTri(vector3(0.0f, 0.0f, 0.0f - a_fRadius), pointTwo, pointOne);
 	}
 	// -------------------------------
 
