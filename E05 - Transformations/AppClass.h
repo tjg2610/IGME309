@@ -21,7 +21,8 @@ using namespace BTX;
 class Application
 {
 	uint m_uMeshCount = 10;
-	MyMesh* m_pMesh;
+	MyMesh* m_pMeshArr[46];
+	float distToMove = -10.0f;
 private:
 	String m_sProgrammer = "Alberto Bobadilla - labigm@rit.edu";
 	static ImGuiObject gui; //GUI object
