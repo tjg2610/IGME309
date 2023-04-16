@@ -3,9 +3,91 @@ using namespace BTX;
 //Allocation
 uint MyRigidBody::SAT(MyRigidBody* const a_pOther)
 {
-	//TODO: Calculate the SAT algorithm I STRONGLY suggest you use the
-	//Real Time Collision detection algorithm for OBB here but feel free to
-	//implement your own solution.
+	float ra, rb;		//Testing axes
+	matrix3 R, AbsR;	//Rotation matrix and absolute value of rotation matrix
+
+	//Generate rotation matrix expressing the other object in this object's coordinate frame
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			R[i][j] = glm::dot(m_m4ToWorld[i], a_pOther->m_m4ToWorld[j]);
+		}
+	}
+
+	//Find global centers
+	vector3 ga = (m_v3MaxG + m_v3MinG) / 2.0f;
+	vector3 gb = (a_pOther->m_v3MaxG + a_pOther->m_v3MinG) / 2.0f;
+
+	//Compute translation vector t
+	vector3 t = gb - ga;
+	t = vector3(glm::dot(t, vector3(m_m4ToWorld[0])), glm::dot(t, vector3(m_m4ToWorld[1])), glm::dot(t, vector3(m_m4ToWorld[2])));
+
+	//Compute common subexpressions
+	//Epsilon is needed for when cross product is nearly null
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			AbsR[i][j] = abs(R[i][j]) + FLT_EPSILON;
+		}
+	}
+
+	//Test this object's X Y and Z axes
+	for (int i = 0; i < 3; i++) {
+		ra = m_v3HalfWidth[i];
+		rb = a_pOther->m_v3HalfWidth[0] * AbsR[i][0] + a_pOther->m_v3HalfWidth[1] * AbsR[i][1] + a_pOther->m_v3HalfWidth[2] * AbsR[i][2];
+		if (abs(t[i]) > ra + rb) return i + 1;
+	}
+
+	//Test other object's X Y and Z axes
+	for (int i = 0; i < 3; i++) {
+		ra = m_v3HalfWidth[0] * AbsR[0][i] + m_v3HalfWidth[1] * AbsR[1][i] + m_v3HalfWidth[2] * AbsR[2][i];
+		rb = a_pOther->m_v3HalfWidth[i];
+		if (abs(t[0] * R[0][i] + t[1] * R[1][i] + t[2] * R[2][i]) > ra + rb) return i + 4;
+	}
+
+	//Test thisX x otherX
+	ra = m_v3HalfWidth[1] * AbsR[2][0] + m_v3HalfWidth[2] * AbsR[1][0];
+	rb = a_pOther->m_v3HalfWidth[1] * AbsR[0][2] + a_pOther->m_v3HalfWidth[2] * AbsR[0][1];
+	if (abs(t[2] * R[1][0] - t[1] * R[2][0]) > ra + rb) return BTXs::eSATResults::SAT_AXxBX;
+
+	//Test thisX x otherY
+	ra = m_v3HalfWidth[1] * AbsR[2][1] + m_v3HalfWidth[2] * AbsR[1][1];
+	rb = a_pOther->m_v3HalfWidth[0] * AbsR[0][2] + a_pOther->m_v3HalfWidth[2] * AbsR[0][0];
+	if (abs(t[2] * R[1][1] - t[1] * R[2][1]) > ra + rb) return BTXs::eSATResults::SAT_AXxBY;
+
+	//Test thisX x otherZ
+	ra = m_v3HalfWidth[1] * AbsR[2][2] + m_v3HalfWidth[2] * AbsR[1][2];
+	rb = a_pOther->m_v3HalfWidth[0] * AbsR[0][1] + a_pOther->m_v3HalfWidth[1] * AbsR[0][0];
+	if (abs(t[2] * R[1][2] - t[1] * R[2][2]) > ra + rb) return BTXs::eSATResults::SAT_AXxBZ;
+
+	//Test thisY x otherX
+	ra = m_v3HalfWidth[0] * AbsR[2][0] + m_v3HalfWidth[2] * AbsR[0][0];
+	rb = a_pOther->m_v3HalfWidth[1] * AbsR[1][2] + a_pOther->m_v3HalfWidth[2] * AbsR[1][1];
+	if (abs(t[0] * R[2][0] - t[2] * R[0][0]) > ra + rb) return BTXs::eSATResults::SAT_AYxBX;
+
+	//Test thisY x otherY
+	ra = m_v3HalfWidth[0] * AbsR[2][1] + m_v3HalfWidth[2] * AbsR[0][1];
+	rb = a_pOther->m_v3HalfWidth[0] * AbsR[1][2] + a_pOther->m_v3HalfWidth[2] * AbsR[1][0];
+	if (abs(t[0] * R[2][1] - t[2] * R[0][1]) > ra + rb) return BTXs::eSATResults::SAT_AYxBY;
+
+	//Test thisY x otherZ
+	ra = m_v3HalfWidth[0] * AbsR[2][2] + m_v3HalfWidth[2] * AbsR[0][2];
+	rb = a_pOther->m_v3HalfWidth[0] * AbsR[1][1] + a_pOther->m_v3HalfWidth[1] * AbsR[1][0];
+	if (abs(t[0] * R[2][2] - t[2] * R[0][2]) > ra + rb) return BTXs::eSATResults::SAT_AYxBZ;
+
+	//Test thisZ x otherX
+	ra = m_v3HalfWidth[0] * AbsR[1][0] + m_v3HalfWidth[1] * AbsR[0][0];
+	rb = a_pOther->m_v3HalfWidth[1] * AbsR[2][2] + a_pOther->m_v3HalfWidth[2] * AbsR[2][1];
+	if (abs(t[1] * R[0][0] - t[0] * R[1][0]) > ra + rb) return BTXs::eSATResults::SAT_AZxBX;
+
+	//Test thisZ x otherY
+	ra = m_v3HalfWidth[0] * AbsR[1][1] + m_v3HalfWidth[1] * AbsR[0][1];
+	rb = a_pOther->m_v3HalfWidth[0] * AbsR[2][2] + a_pOther->m_v3HalfWidth[2] * AbsR[2][0];
+	if (abs(t[1] * R[0][1] - t[0] * R[1][1]) > ra + rb) return BTXs::eSATResults::SAT_AZxBY;
+
+	//Test thisZ x otherZ
+	ra = m_v3HalfWidth[0] * AbsR[1][2] + m_v3HalfWidth[1] * AbsR[0][2];
+	rb = a_pOther->m_v3HalfWidth[0] * AbsR[2][1] + a_pOther->m_v3HalfWidth[1] * AbsR[2][0];
+	if (abs(t[1] * R[0][2] - t[0] * R[1][2]) > ra + rb) return BTXs::eSATResults::SAT_AZxBZ;
+
 	return BTXs::eSATResults::SAT_NONE;
 }
 bool MyRigidBody::IsColliding(MyRigidBody* const a_pOther)
@@ -20,6 +102,10 @@ bool MyRigidBody::IsColliding(MyRigidBody* const a_pOther)
 	if (bColliding) //they are colliding with bounding sphere
 	{
 		uint nResult = SAT(a_pOther);
+		if (nResult != 0)
+		{
+			bColliding = false;
+		}
 
 		if (bColliding) //The SAT shown they are colliding
 		{
